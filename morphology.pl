@@ -1,15 +1,15 @@
-star(_X) --> [].
 star(X) -->
+    X,
+    !,
+    star(X).
+star(_X) --> [].
+
+plus(X) -->
     X,
     star(X).
 
-plus(X) --> X.
-plus(X) -->
-    X,
-    plus(X).
-
 peek(X,A,A) :-
-    phrase(X, A, _).
+    once(phrase(X, A, _)).
 
 match(X, M, A, B) :-
     phrase(X, A, B),
@@ -195,6 +195,7 @@ rafsi_string -->
         y
     ;   hy_rafsi
     ;   stressed_hy_rafsi).
+
 
 %% gismu
 gismu -->
@@ -391,7 +392,7 @@ stress -->
 
 stressed -->
     onset,
-    star(comma),
+    star_comma,
     [X],
     {member(X, `AEIOU`)}.
 
@@ -455,34 +456,35 @@ vowel -->
     \+ nucleus.
 
 a -->
-    star(comma),
-    [X],
-    { member(X, `aA`) }.
+    star_comma,
+
+    (   `a`
+    ;   `A`).
 
 e -->
-    star(comma),
-    [X],
-    { member(X, `eE`) }.
+    star_comma,
+    (   `e`
+    ;   `E`).
 
 i -->
-    star(comma),
-    [X],
-    { member(X, `iI`) }.
+    star_comma,
+    (   `i`
+    ;   `I`).
 
 o -->
-    star(comma),
-    [X],
-    { member(X, `oO`) }.
+    star_comma,
+    (   `o`
+    ;   `O`).
 
 u -->
-    star(comma),
-    [X],
-    { member(X, `uU`) }.
+    star_comma,
+    (   `u`
+    ;   `U`).
 
 y -->
-    star(comma),
-    [X],
-    { member(X, `yY`) }.
+    star_comma,
+    (   `y`
+    ;   `Y`).
 
 
 %% consonants
@@ -560,52 +562,52 @@ syllabic -->
     ;   r).
 
 l -->
-    star(comma),
-    [X],
-    {member(X, `lL`)},
+    star_comma,
+    (   `l`
+    ;   `L`),
     \+ h,
     \+ glide,
     \+ l.
 
 m -->
-    star(comma),
-    [X],
-    {member(X, `mM`)},
+    star_comma,
+    (   `m`
+    ;   `M`),
     \+h,
     \+ glide,
     \+ m,
     \+ z.
 
 n -->
-    star(comma),
-    [X],
-    {member(X, `nN`)},
+    star_comma,
+    (   `n`
+    ;   `N`),
     \+ h,
     \+ glide,
     \+ n,
     \+ affricate.
 
 r -->
-    star(comma),
-    [X],
-    {member(X, `rR`)},
+    star_comma,
+    (   `r`
+    ;   `R`),
     \+ h,
     \+ glide,
     \+ r.
 
 b -->
-    star(comma),
-    [X],
-    {member(X, `bB`)},
+    star_comma,
+    (   `b`
+    ;   `B`),
     \+ h,
     \+ glide,
     \+ b,
     \+ unvoiced.
 
 d -->
-    star(comma),
-    [X],
-    {member(X, `dD`)},
+    star_comma,
+    (   `d`
+    ;   `D`),
     \+ h,
     \+ glide,
     \+ d,
@@ -613,27 +615,27 @@ d -->
 
 
 g -->
-    star(comma),
-    [X],
-    {member(X, `gG`)},
+    star_comma,
+    (   `g`
+    ;   `G`),
     \+ h,
     \+ glide,
     \+ g,
     \+ unvoiced.
 
 v -->
-    star(comma),
-    [X],
-    {member(X, `vV`)},
+    star_comma,
+    (   `v`
+    ;   `V`),
     \+ h,
     \+ glide,
     \+ v,
     \+ unvoiced.
 
 j -->
-    star(comma),
-    [X],
-    {member(X, `jJ`)},
+    star_comma,
+    (   `j`
+    ;   `J`),
     \+ h,
     \+ glide,
     \+ j,
@@ -641,9 +643,9 @@ j -->
     \+ unvoiced.
 
 z -->
-    star(comma),
-    [X],
-    {member(X, `zZ`)},
+    star_comma,
+    (   `z`
+    ;   `Z`),
     \+ h,
     \+ glide,
     \+ z,
@@ -651,9 +653,9 @@ z -->
     \+ unvoiced.
 
 s -->
-    star(comma),
-    [X],
-    {member(X, `sS`)},
+    star_comma,
+    (   `s`
+    ;   `S`),
     \+ h,
     \+ glide,
     \+ s,
@@ -661,9 +663,9 @@ s -->
     \+ voiced.
 
 c -->
-    star(comma),
-    [X],
-    {member(X, `cC`)},
+    star_comma,
+    (   `c`
+    ;   `C`),
     \+ h,
     \+ glide,
     \+ c,
@@ -672,9 +674,9 @@ c -->
     \+ voiced.
 
 x -->
-    star(comma),
-    [X],
-    {member(X, `xX`)},
+    star_comma,
+    (   `x`
+    ;   `X`),
     \+ h,
     \+ glide,
     \+ x,
@@ -683,9 +685,9 @@ x -->
     \+ voiced.
 
 k -->
-    star(comma),
-    [X],
-    {member(X, `kK`)},
+    star_comma,
+    (   `k`
+    ;   `K`),
     \+ h,
     \+ glide,
     \+ k,
@@ -693,43 +695,52 @@ k -->
     \+ voiced.
 
 f -->
-    star(comma),
-    [X],
-    {member(X, `fF`)},
+    star_comma,
+    (   `f`
+    ;   `F`),
     \+ h,
     \+ glide,
     \+ f,
     \+ voiced.
 
 p -->
-    star(comma),
-    [X],
-    {member(X, `pP`)},
+    star_comma,
+    (   `p`
+    ;   `P`),
     \+ h,
     \+ glide,
     \+ p,
     \+ voiced.
 
 t -->
-    star(comma),
-    [X],
-    {member(X, `tT`)},
+    star_comma,
+    (   `t`
+    ;   `T`),
     \+ h,
     \+ glide,
     \+ t,
     \+ voiced.
 
 h -->
-    star(comma),
-    [X],
-    {member(X, `\'h`)},
+    star_comma,
+    (   `\'`
+    ;   `h`
+    ;   `’`),
     peek(nucleus).
 
 %% misc
 digit -->
-    star(comma),
-    [X],
-    {member(X,`0123456789`)},
+    star_comma,
+    (   `0`
+    ;   `1`
+    ;   `2`
+    ;   `3`
+    ;   `4`
+    ;   `5`
+    ;   `6`
+    ;   `7`
+    ;   `8`
+    ;   `9`),
     \+ h,
     \+ nucleus.
 
@@ -741,11 +752,11 @@ post_word -->
     lojban_word.
 
 pause -->
-    star(comma),
+    star_comma,
     (   plus(space_char)
     ;   eof).
 
-eof --> star(comma), end.
+eof --> star_comma, end.
 end --> \+ [_].
 
 non_lojban_word -->
@@ -761,4 +772,9 @@ space_char -->
     { member(X, `.\t\n\r?! `) }.
 
 comma --> `,` .
+
+star_comma([44|L], B) :-
+    !,
+    star_comma(L, B).
+star_comma(B,B).
 
