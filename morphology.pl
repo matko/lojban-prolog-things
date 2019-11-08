@@ -1,780 +1,599 @@
-star(X) -->
-    X,
-    !,
-    star(X).
-star(_X) --> [].
+:- module(morphology, []).
+:- use_module(peg).
+:- use_module(peg_syntax).
 
-plus(X) -->
-    X,
-    star(X).
+words(Ws) <--
+  pause?,
+  words_tail(Ws).
 
-peek(X,A,A) :-
-    once(phrase(X, A, _)).
+words_tail([W|Ws]) <--
+  !,
+  word(W),
+  pause?,
+  words_tail(Ws)? .
 
-match(X, M, A, B) :-
-    phrase(X, A, B),
-    append(M, B, A).
+words_tail([]) <-- [].
 
-optional(X,A,B) :-
-    (   phrase(X, A, B)
-    ->  true
-    ;   A = B).
+word(W) <--
+  match(lojban_word, W), spaces? .
+  
 
-%% words
-words_tail([W|Ws]) -->
-    match(word,W),
-    optional(pause),
-    optional(words_tail(Ws)).
-words_tail([]) --> [].
+any_word <--
+  lojban_word, spaces? .
 
-words(Ws) -->
-    optional(pause),
-    words_tail(Ws).
+lojban_word <--
+  cmevla
+; cmavo
+; brivla_word.
 
-word --> lojban_word.
-word --> non_lojban_word.
-
-lojban_word --> cmene.
-lojban_word --> cmavo.
-lojban_word --> brivla.
-
-brivla --> gismu.
-brivla --> fuhivla.
-brivla --> lujvo.
+brivla_word <--
+  gismu
+; fuhivla
+; lujvo.
 
 %% cmene
-cmene --> jbocme.
-cmene --> zifcme.
+cmevla <--
+  jbocme
+; zifcme.
 
-zifcme -->
-    \+ h,
-    star((   nucleus
-         ;   glide
-         ;   h
-         ;   consonant, \+ pause
-         ;   digit)),
-    consonant,
-    peek(pause).
+zifcme <--
+  !h,
+  ( nucleus
+  ; glide
+  ; h
+  ; consonant, !pause
+  ; digit)*,
+  consonant,
+  &pause.
 
-jbocme -->
-    peek(zifcme),
-    star((   any_syllable
-         ;   digit)),
-    peek(pause).
+jbocme <--
+  &zifcme,
+  ( any_syllable
+  ; digit)+,
+  &pause.
 
 %% cmavo
-cmavo -->
-    \+ cmene,
-    \+ cvcy_lujvo,
-    cmavo_form,
-    peek(post_word).
+cmavo <--
+  !cmevla, !cvcy_lujvo, cmavo_form, &post_word.
 
-cvcy_lujvo -->
-    cvc_rafsi,
-    y,
-    optional(h),
-    star(initial_rafsi),
-    brivla_core.
-cvcy_lujvo -->
-    stressed_cvc_rafsi,
-    y,
-    short_final_rafsi.
+cvcy_lujvo <--
+  cvc_rafsi, y, h?, initial_rafsi*, brivla_core
+; stressed_cvc_rafsi, y, short_final_rafsi.
 
-cmavo_form -->
-    \+ h,
-    \+ cluster,
-    onset,
-    star((nucleus, h)),
-    (   \+ stressed, nucleus
-    ;   nucleus, \+ cluster).
-cmavo_form -->
-    plus(y).
-cmavo_form -->
-    digit.
+cmavo_form <--
+  !h, !cluster,
+  onset,
+  (nucleus, h)*,
+  ( !stressed, nucleus
+  ; nucleus, !cluster)
+; y+
+; digit.
 
-%% lujvo
-lujvo -->
-    \+ gismu,
-    \+ fuhivla,
-    \+ cmavo,
-    star(initial_rafsi),
-    brivla_core.
+%% brivla
+brivla <--
+  !cmavo, initial_rafsi*, brivla_core.
 
-brivla_core --> fuhivla.
-brivla_core --> gismu.
-brivla_core --> cvv_final_rafsi.
-brivla_core -->
-    stressed_initial_rafsi,
-    short_final_rafsi.
+brivla_core <--
+  fuhivla
+; gismu
+; cvv_final_rafsi
+; stressed_initial_rafsi, short_final_rafsi.
 
+stressed_initial_rafsi <--
+  stressed_extended_rafsi
+; stressed_y_rafsi
+; stressed_y_less_rafsi.
 
-stressed_initial_rafsi --> stressed_extended_rafsi.
-stressed_initial_rafsi --> stressed_y_rafsi.
-stressed_initial_rafsi --> stressed_y_less_rafsi.
-
-initial_rafsi --> extended_rafsi.
-initial_rafsi --> y_rafsi.
-initial_rafsi -->
-    \+ any_extended_rafsi,
-    y_less_rafsi,
-    \+ any_extended_rafsi.
-
-any_extended_rafsi --> fuhivla.
-any_extended_rafsi --> extended_rafsi.
-any_extended_rafsi --> stressed_extended_rafsi.
+initial_rafsi <--
+  extended_rafsi
+; y_rafsi
+; !any_extended_rafsi,y_less_rafsi,!any_extended_rafsi.
 
 %% fuhivla
-fuhivla -->
-    fuhivla_head,
-    stressed_syllable,
-    star(consonantal_syllable),
-    final_syllable.
+any_extended_rafsi <--
+  fuhivla
+; extended_rafsi
+; stressed_extended_rafsi.
 
+fuhivla <--
+  fuhivla_head,
+  stressed_syllable,
+  consonantal_syllable*,
+  final_syllable.
 
-stressed_extended_rafsi --> stressed_brivla_rafsi.
-stressed_extended_rafsi --> stressed_fuhivla_rafsi.
+stressed_extended_rafsi <--
+  stressed_brivla_rafsi
+; stressed_fuhivla_rafsi.
 
-extended_rafsi --> brivla_rafsi.
-extended_rafsi --> fuhivla_rafsi.
+extended_rafsi <--
+  brivla_rafsi
+; fuhivla_rafsi.
 
-stressed_brivla_rafsi -->
-    peek(unstressed_syllable),
-    brivla_head,
-    stressed_syllable,
-    h,
-    y.
+stressed_brivla_rafsi <--
+  &unstressed_syllable,
+  brivla_head,
+  stressed_syllable,
+  h, y.
 
-brivla_rafsi -->
-    peek((syllable, star(consonantal_syllable), syllable)),
-    brivla_head,
-    h,
-    y,
-    optional(h).
+brivla_rafsi <--
+  &((syllable, consonantal_syllable*, syllable)),
+  brivla_head,
+  h, y, h? .
 
-stressed_fuhivla_rafsi -->
-    fuhivla_head,
-    stressed_syllable,
-    \+ h,
-    onset,
-    y.
+stressed_fuhivla_rafsi <--
+  fuhivla_head,
+  stressed_syllable,
+  consonantal_syllable*,
+  !h,
+  onset,
+  y.
 
-fuhivla_rafsi -->
-    peek(unstressed_syllable),
-    fuhivla_head,
-    \+ h,
-    onset,
-    y,
-    optional(h).
+fuhivla_rafsi <--
+  &unstressed_syllable, fuhivla_head,
+  !h, onset, y, h? .
 
-fuhivla_head -->
-    \+ rafsi_string,
-    brivla_head.
+fuhivla_head <--
+  !rafsi_string, brivla_head.
 
-brivla_head -->
-    \+ cmavo,
-    \+ slinkuhi,
-    \+ h,
-    peek(onset),
-    star(unstressed_syllable).
+brivla_head <--
+  !cmavo, !slinkuhi, !h,
+  &onset, unstressed_syllable* .
 
-slinkuhi -->
-    \+ rafsi_string,
-    consonant,
-    rafsi_string.
+slinkuhi <--
+  !rafsi_string, consonant, rafsi_string.
 
-rafsi_string -->
-    star(y_less_rafsi),
-    (   gismu
-    ;   cvv_final_rafsi
-    ;   stressed_y_less_rafsi
-    ;   short_final_rafsi
-    ;   y_rafsi
-    ;   stressed_y_rafsi
-    ;   peek(stressed_y_less_rafsi),
-        initial_pair,
-        y
-    ;   hy_rafsi
-    ;   stressed_hy_rafsi).
-
+rafsi_string <--
+  y_less_rafsi*,
+  ( gismu
+  ; cvv_final_rafsi
+  ; stressed_y_less_rafsi, short_final_rafsi
+  ; y_rafsi
+  ; stressed_y_rafsi
+  ; stressed_y_less_rafsi?, initial_pair, y
+  ; hy_rafsi
+  ; stressed_hy_rafsi).
 
 %% gismu
-gismu -->
-    (   initial_pair,
-        stressed_vowel
-    ;   consonant,
-        stressed_vowel,
-        consonant),
-    peek(final_syllable),
-    consonant,
-    vowel,
-    peek(post_word).
+gismu <--
+  ( initial_pair, stressed_vowel
+  ; consonant, stressed_vowel, consonant),
+  &final_syllable, consonant, vowel, &post_word.
 
-cvv_final_rafsi -->
-    consonant,
-    stressed_vowel,
-    h,
-    peek(final_syllable),
-    vowel,
-    peek(post_word).
+cvv_final_rafsi <--
+  consonant,
+  stressed_vowel,
+  h,
+  &final_syllable, vowel,
+  &post_word.
 
-short_final_rafsi -->
-    peek(final_syllable),
-    (   consonant, diphthong
-    ;   initial_pair, vowel),
-    peek(post_word).
+short_final_rafsi <--
+  &final_syllable,
+  ( consonant, diphthong
+  ; initial_pair, vowel),
+  &post_word.
 
-stressed_hy_rafsi -->
-    (   long_rafsi, stressed_vowel
-    ;   stressed_ccv_rafsi
-    ;   stressed_cvv_rafsi),
-    h,
-    y.
+stressed_y_rafsi <--
+  ( stressed_long_rafsi
+  ; stressed_cvc_rafsi),
+  y.
 
+stressed_y_less_rafsi <--
+  stressed_cvc_rafsi, !y
+; stressed_ccv_rafsi
+; stressed_cvv_rafsi.
 
-stressed_y_rafsi -->
-    (   stressed_long_rafsi
-    ;   stressed_cvc_rafsi),
-    y.
+stressed_long_rafsi <--
+  initial_pair, stressed_vowel, consonant
+; consonant, stressed_vowel, consonant, consonant.
 
-stressed_y_less_rafsi -->
-    stressed_cvc_rafsi,
-    \+ y.
-stressed_y_less_rafsi -->
-    stressed_ccv_rafsi.
-stressed_y_less_rafsi -->
-    stressed_cvv_rafsi.
+stressed_cvc_rafsi <--
+  consonant, stressed_vowel, consonant.
 
-stressed_long_rafsi -->
-    initial_pair,
-    stressed_vowel,
-    consonant.
-stressed_long_rafsi -->
-    consonant,
-    stressed_vowel,
-    consonant,
-    consonant.
+stressed_ccv_rafsi <--
+  initial_pair, stressed_vowel.
 
-stressed_cvc_rafsi -->
-    consonant,
-    stressed_vowel,
-    consonant.
+stressed_cvv_rafsi <--
+  consonant,
+  ( unstressed_vowel, h, stressed_vowel
+  ; stressed_diphthong),
+  r_hyphen? .
 
+y_rafsi <--
+  ( long_rafsi
+  ; cvc_rafsi),
+  y,
+  h? .
 
-stressed_ccv_rafsi -->
-    initial_pair,
-    stressed_vowel.
+y_less_rafsi <--
+  !y_rafsi, !stressed_y_rafsi, !hy_rafsi, !stressed_hy_rafsi,
+  ( cvc_rafsi
+  ; ccv_rafsi
+  ; cvv_rafsi),
+  !h.
 
-stressed_cvv_rafsi -->
-    consonant,
-    (   unstressed_vowel, h, stressed_vowel
-    ;   stressed_diphthong),
-    optional(r_hyphen).
+hy_rafsi <--
+  ( long_rafsi, vowel
+  ; ccv_rafsi
+  ; cvv_rafsi),
+  h, y, h? .
 
-hy_rafsi -->
-    (   long_rafsi, vowel
-    ;   ccv_rafsi
-    ;   cvv_rafsi),
-    h,
-    y,
-    optional(h).
+stressed_hy_rafsi <--
+  ( long_rafsi, stressed_vowel
+  ; stressed_ccv_rafsi
+  ; stressed_cvv_rafsi),
+  h, y.
 
-y_rafsi -->
-    (   long_rafsi
-    ;   cvc_rafsi),
-    y,
-    optional(h).
+long_rafsi <--
+  initial_pair, unstressed_vowel, consonant
+; consonant, unstressed_vowel, consonant, consonant.
 
-y_less_rafsi -->
-    \+ y_rafsi,
-    \+ stressed_y_rafsi,
-    \+ hy_rafsi,
-    \+ stressed_hy_rafsi,
-    (   cvc_rafsi
-    ;   ccv_rafsi
-    ;   cvv_rafsi),
-    \+ h.
+cvc_rafsi <--
+  consonant, unstressed_vowel, consonant.
 
-long_rafsi -->
-    initial_pair,
-    unstressed_vowel,
-    consonant.
+ccv_rafsi <--
+  initial_pair, unstressed_vowel.
 
-long_rafsi -->
-    consonant,
-    unstressed_vowel,
-    consonant,
-    consonant.
+cvv_rafsi <--
+  consonant,
+  ( unstressed_vowel, h, unstressed_vowel
+  ; unstressed_diphthong),
+  r_hyphen? .
 
-cvc_rafsi -->
-    consonant,
-    unstressed_vowel,
-    consonant.
+r_hyphen <--
+  r, &consonant
+; n, &r.
 
-ccv_rafsi -->
-    initial_pair,
-    unstressed_vowel.
+%% syllable
+final_syllable <--
+  onset,
+  !y,
+  !stressed,
+  nucleus,
+  !cmevla,
+  &post_word.
 
-cvv_rafsi -->
-    consonant,
-    (   unstressed_vowel,
-        h,
-        unstressed_vowel
-    ;   unstressed_diphthong),
-    optional(r_hyphen).
+stressed_syllable <--
+  &stressed, syllable
+; syllable, &stress.
 
+stressed_diphthong <--
+  &stressed, diphthong
+; dipthong, &stress.
 
-r_hyphen -->
-    r,
-    peek(consonant).
+stressed_vowel <--
+  &stressed, vowel
+; vowel, &stress.
 
+unstressed_syllable <--
+  !stressed, syllable, !stress
+; consonantal_syllable.
 
-r_hyphen -->
-    n,
-    peek(r).
+unstressed_diphthong <--
+  !stressed, diphthong, !stress.
+
+unstressed_vowel <--
+  !stressed, vowel, !stress.
+
+stress <--
+  ( consonant ; glide)*,
+  h?,
+  y?,
+  syllable,
+  pause.
+
+stressed <--
+  onset, comma*,
+  ( `A`;`E`;`I`;`O`;`U` ).
+
+any_syllable <--
+  onset, nucleus, coda?
+; consonantal_syllable.
+
+syllable <--
+  onset, !y, nucleus, coda? .
+
+consonantal_syllable <--
+  consonant, &syllabic, coda.
+
+coda <--
+  !any_syllable, consonant, &any_syllable
+; syllabic?, consonant?, &pause.
+
+onset <--
+  h
+; glide
+; initial.
+
+nucleus <--
+  vowel
+; diphthong
+; y, !nucleus.
 
 %% vowels
-final_syllable -->
-    onset,
-    \+ y,
-    \+ stressed,
-    nucleus,
-    \+ cmene,
-    peek(post_word).
-
-stressed_syllable -->
-    peek(stressed),
-    syllable.
-
-stressed_syllable -->
-    syllable,
-    peek(stress).
-
-stressed_diphthong -->
-    peek(stressed),
-    diphthong.
-
-stressed_diphthong -->
-    diphthong,
-    peek(stress).
-
-stressed_vowel -->
-    peek(stressed),
-    vowel.
-
-stressed_vowel -->
-    vowel,
-    peek(stress).
-
-unstressed_syllable --> 
-    \+ stressed,
-    syllable,
-    \+ stress.
-
-unstressed_syllable -->
-    consonantal_syllable.
-
-unstressed_diphthong -->
-    \+ stressed,
-    diphthong,
-    \+ stress.
-
-unstressed_vowel -->
-    \+ stressed,
-    vowel,
-    \+ stress.
-
-stress -->
-    star(consonant),
-    optional(h),
-    optional(y),
-    syllable,
-    pause.
-
-stressed -->
-    onset,
-    star_comma,
-    [X],
-    {member(X, `AEIOU`)}.
-
-any_syllable -->
-    onset,
-    nucleus,
-    optional(coda).
-
-any_syllable -->
-    consonantal_syllable.
-
-syllable -->
-    onset,
-    \+ y,
-    nucleus,
-    optional(coda).
-
-consonantal_syllable -->
-    consonant,
-    peek(syllabic),
-    coda.
-
-coda --> 
-    \+ any_syllable,
-    consonant,
-    peek(any_syllable).
-
-coda -->
-    optional(syllabic),
-    optional(consonant),
-    peek(pause).
-
-onset --> h.
-onset --> glide.
-onset --> initial.
-
-nucleus --> vowel.
-nucleus --> diphthong.
-nucleus -->
-    y,
-    \+ nucleus.
-
-glide -->
-    (   i
-    ;   u),
-    peek(nucleus).
-
-diphthong -->
-    (   a,i,\+i
-    ;   a,u,\+u
-    ;   e,i,\+i
-    ;   o,i,\+i),
-    \+ nucleus.
-
-vowel -->
-    (   a
-    ;   e
-    ;   i
-    ;   o
-    ;   u),
-    \+ nucleus.
-
-a -->
-    star_comma,
-
-    (   `a`
-    ;   `A`).
-
-e -->
-    star_comma,
-    (   `e`
-    ;   `E`).
-
-i -->
-    star_comma,
-    (   `i`
-    ;   `I`).
-
-o -->
-    star_comma,
-    (   `o`
-    ;   `O`).
-
-u -->
-    star_comma,
-    (   `u`
-    ;   `U`).
-
-y -->
-    star_comma,
-    (   `y`
-    ;   `Y`).
-
-
-%% consonants
-cluster -->
-    consonant,
-    plus(consonant).
-
-initial_pair -->
-    peek(initial),
-    consonant,
-    consonant,
-    \+consonant.
-
-initial -->
-    (   affricate
-    ;   optional(sibilant),
-        optional(other),
-        optional(liquid)),
-    \+ consonant,
-    \+ glide.
-
-affricate --> t, c.
-affricate --> t, s.
-affricate --> d, j.
-affricate --> d, z.
-
-liquid --> l.
-liquid --> r.
-
-other --> p.
-other --> t, \+ l.
-other --> k.
-other --> f.
-other --> x.
-other --> b.
-other --> d, \+ l.
-other --> g.
-other --> v.
-other --> m.
-other --> n, \+ liquid.
-
-sibilant --> c.
-sibilant --> s, \+ x.
-sibilant -->
-    (   j
-    ;   z),
-    \+n,
-    \+ liquid.
-
-consonant --> voiced.
-consonant --> unvoiced.
-consonant --> syllabic.
-
-voiced -->
-    (   b
-    ;   d
-    ;   g
-    ;   j
-    ;   v
-    ;   z).
-
-unvoiced -->
-    (   c
-    ;   f
-    ;   k
-    ;   p
-    ;   s
-    ;   t
-    ;   x).
-
-syllabic -->
-    (   l
-    ;   m
-    ;   n
-    ;   r).
-
-l -->
-    star_comma,
-    (   `l`
-    ;   `L`),
-    \+ h,
-    \+ glide,
-    \+ l.
-
-m -->
-    star_comma,
-    (   `m`
-    ;   `M`),
-    \+h,
-    \+ glide,
-    \+ m,
-    \+ z.
-
-n -->
-    star_comma,
-    (   `n`
-    ;   `N`),
-    \+ h,
-    \+ glide,
-    \+ n,
-    \+ affricate.
-
-r -->
-    star_comma,
-    (   `r`
-    ;   `R`),
-    \+ h,
-    \+ glide,
-    \+ r.
-
-b -->
-    star_comma,
-    (   `b`
-    ;   `B`),
-    \+ h,
-    \+ glide,
-    \+ b,
-    \+ unvoiced.
-
-d -->
-    star_comma,
-    (   `d`
-    ;   `D`),
-    \+ h,
-    \+ glide,
-    \+ d,
-    \+ unvoiced.
-
-
-g -->
-    star_comma,
-    (   `g`
-    ;   `G`),
-    \+ h,
-    \+ glide,
-    \+ g,
-    \+ unvoiced.
-
-v -->
-    star_comma,
-    (   `v`
-    ;   `V`),
-    \+ h,
-    \+ glide,
-    \+ v,
-    \+ unvoiced.
-
-j -->
-    star_comma,
-    (   `j`
-    ;   `J`),
-    \+ h,
-    \+ glide,
-    \+ j,
-    \+ z,
-    \+ unvoiced.
-
-z -->
-    star_comma,
-    (   `z`
-    ;   `Z`),
-    \+ h,
-    \+ glide,
-    \+ z,
-    \+ j,
-    \+ unvoiced.
-
-s -->
-    star_comma,
-    (   `s`
-    ;   `S`),
-    \+ h,
-    \+ glide,
-    \+ s,
-    \+ c,
-    \+ voiced.
-
-c -->
-    star_comma,
-    (   `c`
-    ;   `C`),
-    \+ h,
-    \+ glide,
-    \+ c,
-    \+ s,
-    \+ x,
-    \+ voiced.
-
-x -->
-    star_comma,
-    (   `x`
-    ;   `X`),
-    \+ h,
-    \+ glide,
-    \+ x,
-    \+ c,
-    \+ k,
-    \+ voiced.
-
-k -->
-    star_comma,
-    (   `k`
-    ;   `K`),
-    \+ h,
-    \+ glide,
-    \+ k,
-    \+ x,
-    \+ voiced.
-
-f -->
-    star_comma,
-    (   `f`
-    ;   `F`),
-    \+ h,
-    \+ glide,
-    \+ f,
-    \+ voiced.
-
-p -->
-    star_comma,
-    (   `p`
-    ;   `P`),
-    \+ h,
-    \+ glide,
-    \+ p,
-    \+ voiced.
-
-t -->
-    star_comma,
-    (   `t`
-    ;   `T`),
-    \+ h,
-    \+ glide,
-    \+ t,
-    \+ voiced.
-
-h -->
-    star_comma,
-    (   `\'`
-    ;   `h`
-    ;   `’`),
-    peek(nucleus).
-
-%% misc
-digit -->
-    star_comma,
-    (   `0`
-    ;   `1`
-    ;   `2`
-    ;   `3`
-    ;   `4`
-    ;   `5`
-    ;   `6`
-    ;   `7`
-    ;   `8`
-    ;   `9`),
-    \+ h,
-    \+ nucleus.
-
-post_word -->
-    pause.
-
-post_word -->
-    \+ nucleus,
-    lojban_word.
-
-pause -->
-    star_comma,
-    (   plus(space_char)
-    ;   eof).
-
-eof --> star_comma, end.
-end --> \+ [_].
-
-non_lojban_word -->
-    \+ lojban_word,
-    plus(non_space).
-
-non_space -->
-    \+ space_char,
-    [_].
-
-space_char -->
-    [X],
-    { member(X, `.\t\n\r?! `) }.
-
-comma --> `,` .
-
-star_comma([44|L], B) :-
-    !,
-    star_comma(L, B).
-star_comma(B,B).
-
+glide <--
+  (i;u),
+  &nucleus.
+
+diphthong <--
+  ( a, i, !i
+  ; a, u, !u
+  ; e, i, !i
+  ; o, i, !i),
+  !nucleus.
+
+vowel <--
+  ( a;e;i;o;u),
+  !nucleus.
+
+a <--
+  comma*,
+  (`a`;`A`).
+
+e <--
+  comma*,
+  (`e`;`E`).
+
+i <--
+  comma*,
+  (`i`;`I`).
+
+o <--
+  comma*,
+  (`o`;`O`).
+
+u <--
+  comma*,
+  (`u`;`U`).
+
+y <--
+  comma*,
+  (`y`;`Y`).
+
+%% consonant
+cluster <--
+  consonant,
+  consonant+ .
+
+initial_pair <--
+  &initial, consonant, consonant, !consonant.
+
+initial <--
+  (affricate;sibilant?, other?, liquid?),
+  !consonant,
+  !glide.
+
+affricate <--
+  t, c
+; t, s
+; d, j
+; d, z.
+
+liquid <--
+  l
+; r.
+
+other <--
+  p
+; t, !l
+; k
+; f
+; x
+; b
+; d, !l
+; g
+; v
+; m
+; n, !liquid.
+
+sibilant <--
+  c
+; s, !x
+; (j ; z), !n, !liquid.  
+
+consonant <--
+  voiced
+; unvoiced
+; syllabic.
+
+syllabic <--
+  l;m;n;r.
+
+voiced <--
+  b;d;g;j;v;z.
+
+unvoiced <--
+  c;f;k;p;s;t;x.
+
+l <--
+  comma*,
+  (`l`|`L`),
+  !h,
+  !glide,
+  !l.
+
+m <--
+  comma*,
+  (`m`|`M`),
+  !h,
+  !glide,
+  !m,
+  !z.
+
+n <--
+  comma*,
+  (`n`|`N`),
+  !h,
+  !glide,
+  !n,
+  !affricate.
+
+r <--
+  comma*,
+  (`r`|`R`),
+  !h,
+  !glide,
+  !r.
+
+b <--
+  comma*,
+  (`b`|`B`),
+  !h,
+  !glide,
+  !b,
+  !unvoiced.
+
+d <--
+  comma*,
+  (`d`|`D`),
+  !h,
+  !glide,
+  !d,
+  !unvoiced.
+
+g <--
+  comma*,
+  (`g`|`G`),
+  !h,
+  !glide,
+  !g,
+  !unvoiced.
+
+v <--
+  comma*,
+  (`v`|`V`),
+  !h,
+  !glide,
+  !v,
+  !unvoiced.
+
+j <--
+  comma*,
+  (`j`|`J`),
+  !h,
+  !glide,
+  !j,
+  !z,
+  !unvoiced.
+
+z <--
+  comma*,
+  (`z`|`Z`),
+  !h,
+  !glide,
+  !z,
+  !j,
+  !unvoiced.
+
+s <--
+  comma*,
+  (`s`|`S`),
+  !h,
+  !glide,
+  !s,
+  !c,
+  !voiced.
+
+c <--
+  comma*,
+  (`c`|`C`),
+  !h,
+  !glide,
+  !c,
+  !s,
+  !x,
+  !voiced.
+
+x <--
+  comma*,
+  (`x`|`X`),
+  !h,
+  !glide,
+  !x,
+  !c,
+  !k,
+  !voiced.
+
+k <--
+  comma*,
+  (`k`|`K`),
+  !h,
+  !glide,
+  !k,
+  !x,
+  !voiced.
+
+f <--
+  comma*,
+  (`f`|`F`),
+  !h,
+  !glide,
+  !f,
+  !voiced.
+
+p <--
+  comma*,
+  (`p`|`P`),
+  !h,
+  !glide,
+  !p,
+  !voiced.
+
+t <--
+  comma*,
+  (`t`|`T`),
+  !h,
+  !glide,
+  !t,
+  !voiced.
+
+h <--
+  comma*,
+  (`'`|`h`|`’`),
+  &nucleus.
+
+%% other
+digit <--
+  comma*,
+  (`0`;`1`;`2`;`3`;`4`;`5`;`6`;`7`;`8`;`9`).
+
+post_word <--
+  pause
+; !nucleus, lojban_word.
+
+pause <--
+  comma*, space_char+
+; eof.
+
+eof <-- comma*, !.
+comma <-- `,`.
+
+non_space <--
+  !space_char,
+  [_].
+
+space_char <--
+  [X],
+  { member(X, `.\t\n\r?! `) }.
+
+%% stuff ?
+spaces <--
+  selmaho_y, initial_spaces.
+
+initial_spaces <--
+  ( comma*, space_char
+  ; !ybu, selmao_y)+,
+  eof?
+; eof.
+
+ybu <--
+  selmao_y, space_char*, selmao_bu.
+
+lujvo <--
+  !gismu, !fuhivla, brivla.
+
+%% selmaho
+selmaho_bu <--
+  &cmavo, b, u, &post_word.
+
+selmaho_y <--
+  &cmavo, y+, &post_word.
