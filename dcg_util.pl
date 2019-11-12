@@ -1,9 +1,9 @@
-:- module(dcg_util, [match/4, peek/3, star/3, plus/3, optional/3, star_comma/2]).
+:- module(dcg_util, [match/4, peek/3, star/3, plus/3, optional/3]).
 
-:-meta_predicate(match(//, ?, ?, ?)).
-match(X, M, A, B) :-
+:-meta_predicate(match(-, //, ?, ?)).
+match(M, X, A, B) :-
     phrase(X, A, B),
-    once(append(M, B, A)).
+    once(append(M, B, A)). % todo: is there a better way to get difference list?
 
 :-meta_predicate(peek(//, ?, ?)).
 peek(X,A,A) :-
@@ -27,9 +27,7 @@ optional(X,A,B) :-
     ->  true
     ;   A = B).
 
-star_comma(A, B) :-
-    var(A), !, B = A.
-star_comma([44|L], B) :-
-    !,
-    star_comma(L, B).
-star_comma(B,B).
+unpack_tokens_processor([token(T,_)|Ts], Ts, T).
+
+unpack_tokens(Ts, Elts) :-
+    lazy_list(unpack_tokens_processor, Ts, Elts).
